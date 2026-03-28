@@ -1,0 +1,1202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>VIX Call Strike Calculator</title>
+  <link rel="icon" type="image/png" href="favicon.png" />
+  <style>
+    :root {
+      --bg: #eee;
+      --text: #0f172a;
+      --muted: #64748b;
+      --muted-2: #334155;
+      --field: #ffffff;
+      --field-focus: #ffffff;
+      --line: #ccc;
+      --button: #dbeafe;
+      --button-hover: #bfdbfe;
+      --button-text: #2563eb;
+      --chip: #ffffff;
+      --chip-active: #d2e4fc;
+      --chip-text: #334155;
+      --success: #15803d;
+      --warning: #b45309;
+      --danger: #b91c1c;
+      --shadow: 0 16px 40px rgba(15, 23, 42, 0.08);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: "SF Pro Text", "Segoe UI", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      padding: 36px 32px 48px;
+    }
+
+    .app {
+      max-width: 1120px;
+      margin: 0 auto;
+      display: grid;
+      gap: 40px;
+    }
+
+    .hero,
+    .panel {
+      background: transparent;
+      border: 0;
+      border-radius: 0;
+      box-shadow: none;
+    }
+
+    .hero {
+      padding: 0 0 24px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    h1 {
+      margin: 0 0 10px;
+      font-size: clamp(2.1rem, 3vw, 3rem);
+      line-height: 1;
+      letter-spacing: -0.03em;
+      color: #ffa500;
+    }
+
+    .sub {
+      margin: 0;
+      color: var(--muted);
+      font-size: 1rem;
+      line-height: 1.65;
+      max-width: 760px;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 80px;
+      align-items: start;
+    }
+
+    .panel {
+      padding: 0;
+    }
+
+    .section-title {
+      margin: 0 0 20px;
+      font-size: 0.78rem;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+
+    .form-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 40px 30px;
+    }
+
+    .field {
+      display: grid;
+      gap: 10px;
+    }
+
+    .field.full {
+      grid-column: 1 / -1;
+    }
+
+    .field.spaced-top {
+      margin-top: 2rem;
+    }
+
+    .date-picker-field {
+      position: relative;
+      cursor: pointer;
+    }
+
+    .date-picker-display {
+      cursor: pointer;
+    }
+
+    .date-picker-native {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      opacity: 0;
+      pointer-events: none;
+      cursor: pointer;
+    }
+
+    .date-picker-field:focus-within .date-picker-display {
+      background: var(--field-focus);
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.18);
+    }
+
+    label {
+      font-size: 0.92rem;
+      font-weight: 600;
+      color: var(--muted-2);
+    }
+
+    .tooltip-label {
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+      cursor: help;
+    }
+
+    .tooltip-label::before,
+    .tooltip-label::after {
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.16s ease, transform 0.16s ease;
+      transform: translateY(-4px);
+    }
+
+    .tooltip-label::before {
+      content: '';
+      position: absolute;
+      top: calc(100% + 4px);
+      left: 18px;
+      border-width: 6px;
+      border-style: solid;
+      border-color: transparent transparent #ffffff transparent;
+      z-index: 21;
+    }
+
+    .tooltip-label::after {
+      content: attr(data-tooltip);
+      position: absolute;
+      top: calc(100% + 10px);
+      left: 0;
+      width: min(280px, 70vw);
+      padding: 10px 12px;
+      border-radius: 12px;
+      border: 1px solid var(--line);
+      background: #e4e4e4;
+      color: var(--text);
+      font-size: 0.84rem;
+      line-height: 1.45;
+      box-shadow: var(--shadow);
+      white-space: normal;
+      z-index: 20;
+    }
+
+    .tooltip-label:hover::before,
+    .tooltip-label:hover::after,
+    .tooltip-label:focus-visible::before,
+    .tooltip-label:focus-visible::after {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    input,
+    select {
+      width: 100%;
+      padding: 14px 16px;
+      border-radius: 10px;
+      border: 0;
+      background: var(--field);
+      color: var(--text);
+      outline: none;
+      font-size: 1rem;
+      appearance: none;
+    }
+
+    input:focus,
+    select:focus {
+      background: var(--field-focus);
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.18);
+    }
+
+    input[readonly] {
+      cursor: default;
+      color: var(--text);
+      background: #ffffff;
+    }
+
+    .field-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .field-head.wrap {
+      align-items: baseline;
+      flex-wrap: wrap;
+      justify-content: flex-start;
+      gap: 6px 12px;
+    }
+
+    .field-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .button {
+      border: 0;
+      background: var(--button);
+      color: var(--button-text);
+      padding: 10px 14px;
+      border-radius: 999px;
+      cursor: pointer;
+      font-size: 0.9rem;
+      font-weight: 600;
+      transition: 0.2s ease;
+    }
+
+    .button:hover {
+      transform: translateY(-1px);
+      background: var(--button-hover);
+    }
+
+    .label-inline {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+
+    .text-link {
+      border: 0;
+      padding: 0;
+      background: transparent;
+      color: var(--button-text);
+      font: inherit;
+      font-size: 0.88rem;
+      font-weight: 400;
+      cursor: pointer;
+      text-decoration: none;
+    }
+
+    .text-link:hover,
+    .text-link:focus-visible {
+      text-decoration: underline;
+    }
+
+    .field-note,
+    .status-line,
+    .lookup-links {
+      color: var(--muted);
+      font-size: 0.88rem;
+      line-height: 1.5;
+    }
+
+    .status-line {
+      min-height: 1.4em;
+    }
+
+    .status-line.warn {
+      color: var(--warning);
+    }
+
+    .status-line.good {
+      color: var(--muted);
+    }
+
+    .status-line.danger {
+      color: var(--danger);
+    }
+
+    .status-line a,
+    .field-note a,
+    .lookup-links a,
+    .footer-note a {
+      color: var(--button-text);
+      text-decoration: none;
+    }
+
+    .status-line a:hover,
+    .field-note a:hover,
+    .lookup-links a:hover,
+    .footer-note a:hover {
+      text-decoration: underline;
+    }
+
+    .lookup-links {
+      display: grid;
+      gap: 8px;
+      margin-top: 4px;
+    }
+
+    .lookup-links strong {
+      color: var(--text);
+    }
+
+    .chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .chip-controls {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .chip-controls .chips {
+      flex: 1 1 0;
+    }
+
+    .multiplier-custom {
+      flex: 0 0 120px;
+      min-width: 120px;
+    }
+
+    .multiplier-custom input {
+      min-width: 0;
+    }
+
+    .chip {
+      border: 0;
+      background: var(--chip);
+      color: var(--chip-text);
+      padding: 10px 14px;
+      border-radius: 999px;
+      cursor: pointer;
+      font-size: 0.95rem;
+      transition: 0.2s ease;
+    }
+
+    .chip:hover,
+    .chip.active {
+      background: var(--chip-active);
+      color: var(--button-text);
+      transform: translateY(-1px);
+    }
+
+    .results {
+      display: grid;
+      gap: 0;
+    }
+
+    .output-section + .output-section {
+      margin-top: 30px;
+      padding-top: 30px;
+      border-top: 1px solid var(--line);
+    }
+
+    .card {
+      background: transparent;
+      border: 0;
+      border-radius: 0;
+      padding: 0;
+    }
+
+    .detail-sections {
+      padding-top: 28px;
+      border-top: 1px solid var(--line);
+    }
+
+    .detail-layout {
+      display: grid;
+      grid-template-columns: minmax(0, 1.35fr) minmax(280px, 0.85fr);
+      gap: 40px;
+      align-items: start;
+    }
+
+    .detail-sidebar {
+      display: grid;
+      gap: 32px;
+    }
+
+    .metric-label {
+      color: var(--muted);
+      font-size: 0.9rem;
+      margin-bottom: 8px;
+    }
+
+    .summary-card .metric-label {
+      margin-bottom: 16px;
+    }
+
+    .metric-value {
+      font-size: 2.2rem;
+      font-weight: 700;
+      line-height: 1.1;
+      letter-spacing: -0.03em;
+    }
+
+    .metric-sub {
+      margin-top: 6px;
+      color: var(--muted);
+      font-size: 0.92rem;
+    }
+
+    .badge-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 8px;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 10px;
+      padding: 8px 20px;
+      border-radius: 999px;
+      font-size: 0.88rem;
+      border: 0;
+      background: #ffffff;
+      color: var(--muted-2);
+    }
+
+    .badge.good { background: #eefbf3; color: var(--success); }
+    .badge.warn { background: #fff7ed; color: var(--warning); }
+    .badge.danger { background: #fef2f2; color: var(--danger); }
+
+    #monthBadge {
+      background: #e4e4e4;
+    }
+
+    .summary {
+      font-size: 1rem;
+      line-height: 1.9;
+      color: var(--muted-2);
+    }
+
+    .summary strong {
+      color: var(--text);
+    }
+
+    .summary-list {
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    .summary-list li {
+      position: relative;
+      padding-left: 18px;
+    }
+
+    .summary-list li + li {
+      margin-top: 8px;
+    }
+
+    .summary-list li::before {
+      content: '';
+      position: absolute;
+      top: 0.8em;
+      left: 0;
+      width: 6px;
+      height: 6px;
+      border-radius: 999px;
+      background: #cbd5e1;
+      transform: translateY(-50%);
+    }
+
+    .helper {
+      color: var(--muted-2);
+      font-size: 0.95rem;
+      line-height: 1.65;
+    }
+
+    .two-col {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0,1fr));
+      gap: 28px;
+    }
+
+    .small-metric {
+      padding: 0;
+      border: 0;
+      background: transparent;
+    }
+
+    .small-metric .metric-value {
+      font-size: 1.35rem;
+    }
+
+    .footer-note {
+      color: var(--muted);
+      font-size: 0.92rem;
+      padding-top: 24px;
+      border-top: 1px solid var(--line);
+    }
+
+    @media (max-width: 900px) {
+      .grid { grid-template-columns: 1fr; }
+      .form-grid,
+      .two-col { grid-template-columns: 1fr; }
+      .detail-layout { grid-template-columns: 1fr; gap: 24px; }
+      .detail-sidebar { gap: 24px; }
+      body { padding: 24px 18px 32px; }
+      .app { gap: 32px; }
+      .grid { gap: 32px; }
+      .button { width: 100%; justify-content: center; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <section class="hero">
+      <h1>VIX Call Strike Calculator</h1>
+      <p class="sub">
+        Use the matching <strong>VX futures month</strong>, not spot VIX.<br />
+        Enter the VX quote, pick a multiplier, and the tool suggests a theoretical and rounded VIX call strike.
+      </p>
+    </section>
+
+	    <div class="grid">
+	      <section class="panel">
+	        <h2 class="section-title">Inputs For The Call</h2>
+	        <div class="form-grid">
+	          <div class="field">
+	            <label for="asOfDate">As-of date</label>
+	            <div class="date-picker-field">
+	              <input id="asOfDateDisplay" class="date-picker-display" type="text" placeholder="Jun 26, 2026" readonly aria-label="As-of date display" />
+	              <input id="asOfDate" class="date-picker-native" type="date" />
+	            </div>
+          </div>
+
+          <div class="field">
+            <label for="dte">Target DTE</label>
+            <input id="dte" type="number" min="1" step="1" value="90" />
+          </div>
+
+          <div class="field">
+            <label for="targetDate">Target date</label>
+            <input id="targetDate" type="text" readonly />
+          </div>
+
+          <div class="field">
+            <label for="optionExpirationDate" class="tooltip-label" tabindex="0" data-tooltip="Using the nearest standard monthly VIX expiration to the target date.">Expiration date</label>
+            <input id="optionExpirationDate" type="text" readonly />
+          </div>
+
+          <div class="field">
+            <label for="vxSymbol">Matching VX future</label>
+            <input id="vxSymbol" type="text" readonly />
+          </div>
+
+          <div class="field">
+            <label for="actualDte">Actual DTE</label>
+            <input id="actualDte" type="text" readonly />
+          </div>
+
+          <div class="field full">
+            <div class="field-head">
+              <label for="vxQuote" class="tooltip-label" tabindex="0" data-tooltip="Auto-fills the latest available official Cboe daily settlement for the derived VX future. Edit manually if you want an intraday quote.">VX futures quote</label>
+              <div class="field-actions">
+                <button class="text-link" id="refreshQuoteButton" type="button">Refresh VX quote</button>
+              </div>
+            </div>
+            <input id="vxQuote" type="number" min="0" step="0.0001" placeholder="Auto-filled from latest available Cboe settlement" />
+            <div class="status-line" id="quoteStatus"></div>
+          </div>
+
+	        </div>
+		      </section>
+
+	      <section class="panel">
+	        <h2 class="section-title">VIX Call Strike</h2>
+	        <div class="results">
+          <div class="card output-section">
+            <div class="metric-label">Suggested strike</div>
+            <div class="metric-value" id="roundedStrike">35</div>
+            <div class="metric-sub" id="theoreticalStrike">Theoretical strike: 34.72</div>
+            <div class="field-note">Rounded to the nearest 1-point strike.</div>
+            <div class="badge-row">
+              <div class="badge good" id="styleBadge">Extreme setup</div>
+              <div class="badge" id="monthBadge">JUL option → VX/N6</div>
+            </div>
+          </div>
+
+          <div class="two-col output-section">
+            <div class="small-metric">
+              <div class="metric-label">Distance above VX</div>
+              <div class="metric-value" id="distancePoints">10.20 pts</div>
+              <div class="metric-sub" id="distancePercent">41.13%</div>
+            </div>
+	            <div class="small-metric">
+	              <div class="metric-label">Estimated total cost</div>
+	              <div class="metric-value" id="totalCost">$120</div>
+		              <div class="metric-sub" id="costDetail">1 VIX option × 100</div>
+		            </div>
+		          </div>
+
+		          <div class="card output-section">
+		            <div class="field">
+		              <label>Strike Multiplier</label>
+		              <div class="chip-controls">
+		                <div class="chips" id="presetChips">
+		                  <button class="chip" data-value="1.20">1.20</button>
+		                  <button class="chip" data-value="1.30">1.30</button>
+		                  <button class="chip active" data-value="1.40">1.40</button>
+		                  <button class="chip" data-value="1.50">1.50</button>
+		                </div>
+		                <div class="multiplier-custom">
+		                  <input id="customMultiplier" type="number" min="0.01" step="0.01" value="1.40" inputmode="decimal" placeholder="Custom" aria-label="Custom multiplier" />
+		                </div>
+		              </div>
+		              <input id="multiplier" type="hidden" value="1.4" />
+		            </div>
+		            <div class="field spaced-top">
+		              <label for="optionPremium" class="label-inline">Option premium (points) <a class="text-link" href="https://portal.interactivebrokers.com/portal/?loginType=1&action=ACCT_MGMT_MAIN&RL=1#/quote/13455763/option/option.chain" target="_blank" rel="noopener noreferrer">Open IBKR chain</a></label>
+		              <input id="optionPremium" type="number" min="0" step="0.01" value="1.2" />
+		            </div>
+		          </div>
+
+	        </div>
+	      </section>
+	    </div>
+
+	    <section class="panel detail-sections">
+	      <div class="detail-layout">
+	        <div class="card summary-card">
+	          <div class="metric-label">Action summary</div>
+	          <div class="summary" id="summaryText"></div>
+	        </div>
+	        <div class="detail-sidebar">
+	          <div class="card">
+	            <div class="metric-label">Workflow reminder</div>
+	            <div class="helper">
+	              1) Pick the VIX option month around your target DTE.<br />
+	              2) Find the matching VX futures month.<br />
+	              3) Use <strong>VX × multiplier</strong>.<br />
+	              4) Round to the nearest listed strike.<br />
+	              5) Check premium and total cost.<br />
+	              6) Manage with your own roll and profit-taking rules.
+	            </div>
+	          </div>
+	          <div class="card">
+	            <div class="metric-label">Lookup links</div>
+	            <div class="lookup-links">
+	              <div><strong>VIX Quotes Dashboard:</strong> <a href="https://www.cboe.com/delayed_quotes/vix/realtime_quotes/" target="_blank" rel="noopener noreferrer">options and futures lookup</a></div>
+	              <div><strong>VIX Futures:</strong> <a href="https://www.cboe.com/tradable-products/vix/vix-futures" target="_blank" rel="noopener noreferrer">contract months and delayed prices</a></div>
+	              <div><strong>VX Settlements:</strong> <a href="https://www.cboe.com/markets/us/futures/market-statistics/settlement/futures/daily" target="_blank" rel="noopener noreferrer">official daily settlement table</a></div>
+	              <div><strong>Options Calendar:</strong> <a href="https://www.cboe.com/about/hours/us-options/" target="_blank" rel="noopener noreferrer">Cboe options holiday and expiration calendar</a></div>
+	            </div>
+	          </div>
+	        </div>
+	      </div>
+	    </section>
+
+	    <section class="panel footer-note">
+	      Reminder: this tool is a calculator and workflow helper. When served with <code>python3 run.py</code>, it auto-fills the latest available official Cboe daily settlement for the derived VX future. Enter a manual quote if you want an intraday price.
+	    </section>
+	  </div>
+
+  <script>
+    const els = {
+      asOfDate: document.getElementById('asOfDate'),
+      asOfDateDisplay: document.getElementById('asOfDateDisplay'),
+      dte: document.getElementById('dte'),
+      targetDate: document.getElementById('targetDate'),
+      optionExpirationDate: document.getElementById('optionExpirationDate'),
+      actualDte: document.getElementById('actualDte'),
+      vxSymbol: document.getElementById('vxSymbol'),
+      vxQuote: document.getElementById('vxQuote'),
+      quoteStatus: document.getElementById('quoteStatus'),
+      refreshQuoteButton: document.getElementById('refreshQuoteButton'),
+      customMultiplier: document.getElementById('customMultiplier'),
+      multiplier: document.getElementById('multiplier'),
+      optionPremium: document.getElementById('optionPremium'),
+      roundedStrike: document.getElementById('roundedStrike'),
+      theoreticalStrike: document.getElementById('theoreticalStrike'),
+      styleBadge: document.getElementById('styleBadge'),
+      monthBadge: document.getElementById('monthBadge'),
+      distancePoints: document.getElementById('distancePoints'),
+      distancePercent: document.getElementById('distancePercent'),
+      totalCost: document.getElementById('totalCost'),
+      costDetail: document.getElementById('costDetail'),
+      summaryText: document.getElementById('summaryText'),
+      presetChips: document.querySelectorAll('.chip')
+    };
+
+    const MONTH_CODES = ['F', 'G', 'H', 'J', 'K', 'M', 'N', 'Q', 'U', 'V', 'X', 'Z'];
+    const MONTH_NAMES = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
+    const HOLIDAY_CACHE = new Map();
+    const appState = {
+      asOfDate: null,
+      targetDate: null,
+      optionExpirationDate: null,
+      optionMonthLabel: 'Option month',
+      actualDte: null,
+      quoteSource: null
+    };
+
+    function num(value, fallback = 0) {
+      const parsed = parseFloat(value);
+      return Number.isFinite(parsed) ? parsed : fallback;
+    }
+
+    function optionalNum(value) {
+      const parsed = parseFloat(value);
+      return Number.isFinite(parsed) ? parsed : null;
+    }
+
+    function roundToIncrement(value, increment) {
+      if (!increment || increment <= 0) return value;
+      return Math.round(value / increment) * increment;
+    }
+
+    function formatMoney(value) {
+      return new Intl.NumberFormat('en-US', {
+        style: 'currency',
+        currency: 'USD',
+        maximumFractionDigits: value % 1 === 0 ? 0 : 2,
+      }).format(value);
+    }
+
+    function openAsOfDatePicker() {
+      if (typeof els.asOfDate.showPicker === 'function') {
+        els.asOfDate.showPicker();
+        return;
+      }
+      els.asOfDate.focus();
+    }
+
+    function setupLabel(multiplier) {
+      if (multiplier >= 1.35) return { text: 'Extreme setup', cls: 'badge warn' };
+      if (multiplier >= 1.2) return { text: 'Balanced setup', cls: 'badge good' };
+      return { text: 'Custom setup', cls: 'badge' };
+    }
+
+    function getTimeZoneIsoDate(timeZone) {
+      const parts = new Intl.DateTimeFormat('en-US', {
+        timeZone,
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit'
+      }).formatToParts(new Date());
+
+      const getPart = type => parts.find(part => part.type === type)?.value;
+      return `${getPart('year')}-${getPart('month')}-${getPart('day')}`;
+    }
+
+    function parseDateInput(value) {
+      if (!value) return null;
+
+      const trimmed = value.trim();
+      let match = /^([A-Za-z]{3,})\s+(\d{1,2}),\s*(\d{4})$/.exec(trimmed);
+      if (match) {
+        const [, monthText, day, year] = match;
+        const monthIndex = MONTH_NAMES.indexOf(monthText.slice(0, 3).toLowerCase());
+        if (monthIndex === -1) return null;
+        const parsed = new Date(Date.UTC(Number(year), monthIndex, Number(day)));
+        return formatIsoDate(parsed) === `${year}-${String(monthIndex + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}` ? parsed : null;
+      }
+
+      match = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(trimmed);
+      if (match) {
+        const [, month, day, year] = match;
+        const parsed = new Date(Date.UTC(Number(year), Number(month) - 1, Number(day)));
+        return formatIsoDate(parsed) === `${year}-${month}-${day}` ? parsed : null;
+      }
+
+      match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(trimmed);
+      if (!match) return null;
+
+      const [, year, month, day] = match;
+      return new Date(Date.UTC(Number(year), Number(month) - 1, Number(day)));
+    }
+
+    function formatIsoDate(date) {
+      return date.toISOString().slice(0, 10);
+    }
+
+    function formatDisplayDate(date) {
+      return new Intl.DateTimeFormat('en-US', {
+        timeZone: 'UTC',
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric'
+      }).format(date);
+    }
+
+    function formatInputDate(date) {
+      return formatIsoDate(date);
+    }
+
+    function formatMonthYear(date) {
+      return new Intl.DateTimeFormat('en-US', {
+        timeZone: 'UTC',
+        month: 'short',
+        year: 'numeric'
+      }).format(date).toUpperCase();
+    }
+
+    function formatCboeDate(date) {
+      return formatDisplayDate(date);
+    }
+
+    function addDays(date, days) {
+      const next = new Date(date);
+      next.setUTCDate(next.getUTCDate() + days);
+      return next;
+    }
+
+    function diffDays(start, end) {
+      return Math.round((end.getTime() - start.getTime()) / 86400000);
+    }
+
+    function nthWeekdayOfMonth(year, monthIndex, weekday, occurrence) {
+      const date = new Date(Date.UTC(year, monthIndex, 1));
+      while (date.getUTCDay() !== weekday) {
+        date.setUTCDate(date.getUTCDate() + 1);
+      }
+
+      date.setUTCDate(date.getUTCDate() + ((occurrence - 1) * 7));
+      return date;
+    }
+
+    function lastWeekdayOfMonth(year, monthIndex, weekday) {
+      const date = new Date(Date.UTC(year, monthIndex + 1, 0));
+      while (date.getUTCDay() !== weekday) {
+        date.setUTCDate(date.getUTCDate() - 1);
+      }
+
+      return date;
+    }
+
+    function observedHoliday(year, monthIndex, day) {
+      const date = new Date(Date.UTC(year, monthIndex, day));
+      const weekday = date.getUTCDay();
+      if (weekday === 6) return addDays(date, -1);
+      if (weekday === 0) return addDays(date, 1);
+      return date;
+    }
+
+    function easterSunday(year) {
+      const century = Math.floor(year / 100);
+      const yearInCentury = year % 100;
+      const leapCentury = Math.floor(century / 4);
+      const centuryRemainder = century % 4;
+      const leapYearInCentury = Math.floor(yearInCentury / 4);
+      const yearRemainder = yearInCentury % 4;
+      const correction = Math.floor((century + 8) / 25);
+      const moon = (century - correction + 1) / 3;
+      const golden = year % 19;
+      const epact = (19 * golden + century - leapCentury - Math.floor(moon) + 15) % 30;
+      const temp = (32 + (2 * centuryRemainder) + (2 * leapYearInCentury) - epact - yearRemainder) % 7;
+      const monthFactor = Math.floor((golden + (11 * epact) + (22 * temp)) / 451);
+      const month = Math.floor((epact + temp - (7 * monthFactor) + 114) / 31);
+      const day = ((epact + temp - (7 * monthFactor) + 114) % 31) + 1;
+      return new Date(Date.UTC(year, month - 1, day));
+    }
+
+    function getHolidaySet(year) {
+      if (HOLIDAY_CACHE.has(year)) return HOLIDAY_CACHE.get(year);
+
+      const dates = [
+        observedHoliday(year, 0, 1),
+        nthWeekdayOfMonth(year, 0, 1, 3),
+        nthWeekdayOfMonth(year, 1, 1, 3),
+        addDays(easterSunday(year), -2),
+        lastWeekdayOfMonth(year, 4, 1),
+        observedHoliday(year, 5, 19),
+        observedHoliday(year, 6, 4),
+        nthWeekdayOfMonth(year, 8, 1, 1),
+        nthWeekdayOfMonth(year, 10, 4, 4),
+        observedHoliday(year, 11, 25),
+      ];
+
+      const nextYearObservedNewYear = observedHoliday(year + 1, 0, 1);
+      if (nextYearObservedNewYear.getUTCFullYear() === year) {
+        dates.push(nextYearObservedNewYear);
+      }
+
+      const holidaySet = new Set(dates.map(formatIsoDate));
+      HOLIDAY_CACHE.set(year, holidaySet);
+      return holidaySet;
+    }
+
+    function isHoliday(date) {
+      const iso = formatIsoDate(date);
+      const year = date.getUTCFullYear();
+      return [year - 1, year, year + 1].some(checkYear => getHolidaySet(checkYear).has(iso));
+    }
+
+    function isBusinessDay(date) {
+      const weekday = date.getUTCDay();
+      return weekday !== 0 && weekday !== 6 && !isHoliday(date);
+    }
+
+    function previousBusinessDay(date) {
+      let current = addDays(date, -1);
+      while (!isBusinessDay(current)) {
+        current = addDays(current, -1);
+      }
+      return current;
+    }
+
+    function getVixMonthlyExpiration(contractYear, contractMonthIndex) {
+      const followingMonthIndex = contractMonthIndex === 11 ? 0 : contractMonthIndex + 1;
+      const followingMonthYear = contractMonthIndex === 11 ? contractYear + 1 : contractYear;
+      const thirdFriday = nthWeekdayOfMonth(followingMonthYear, followingMonthIndex, 5, 3);
+      let expiration = addDays(thirdFriday, -30);
+
+      if (!isBusinessDay(expiration) || isHoliday(thirdFriday)) {
+        expiration = previousBusinessDay(expiration);
+      }
+
+      return expiration;
+    }
+
+    function findMatchingContract(asOfDate, targetDate) {
+      let bestContract = null;
+
+      for (let offset = -2; offset < 24; offset += 1) {
+        const monthIndex = targetDate.getUTCMonth() + offset;
+        const contractYear = targetDate.getUTCFullYear() + Math.floor(monthIndex / 12);
+        const contractMonthIndex = ((monthIndex % 12) + 12) % 12;
+        const expiration = getVixMonthlyExpiration(contractYear, contractMonthIndex);
+        if (expiration.getTime() < asOfDate.getTime()) continue;
+        const distance = Math.abs(expiration.getTime() - targetDate.getTime());
+
+        if (!bestContract || distance < bestContract.distance || (distance === bestContract.distance && expiration.getTime() > bestContract.expiration.getTime())) {
+          bestContract = { contractYear, contractMonthIndex, expiration, distance };
+        }
+      }
+
+      if (!bestContract) return null;
+      return {
+        contractYear: bestContract.contractYear,
+        contractMonthIndex: bestContract.contractMonthIndex,
+        expiration: bestContract.expiration
+      };
+    }
+
+    function formatVxSymbol(contractYear, contractMonthIndex) {
+      return `VX/${MONTH_CODES[contractMonthIndex]}${String(contractYear).slice(-1)}`;
+    }
+
+    function setQuoteStatus(message, cls = '') {
+      els.quoteStatus.className = cls ? `status-line ${cls}` : 'status-line';
+      if (appState.quoteSource?.source_url) {
+        els.quoteStatus.innerHTML = `${message} <a href="${appState.quoteSource.source_url}" target="_blank" rel="noopener noreferrer">View source</a>`;
+        return;
+      }
+      els.quoteStatus.textContent = message;
+    }
+
+    let quoteRequestId = 0;
+
+    async function fetchSettlementQuote() {
+      const symbol = els.vxSymbol.value.trim();
+      const asOfDate = appState.asOfDate;
+
+      appState.quoteSource = null;
+
+      if (!symbol || !asOfDate) {
+        setQuoteStatus('Set the date inputs first to derive a VX future.', 'warn');
+        updateCalculator();
+        return;
+      }
+
+      if (window.location.protocol === 'file:') {
+        setQuoteStatus('Serve this page with python3 run.py to auto-fill the VX settlement quote. Manual entry still works.', 'warn');
+        updateCalculator();
+        return;
+      }
+
+      const requestId = ++quoteRequestId;
+      setQuoteStatus(`Fetching latest available Cboe settlement for ${symbol}...`);
+
+      try {
+        const response = await fetch(`/api/vx-settlement?symbol=${encodeURIComponent(symbol)}&dt=${encodeURIComponent(formatIsoDate(asOfDate))}`);
+        const payload = await response.json().catch(() => ({}));
+
+        if (requestId !== quoteRequestId) return;
+
+        if (!response.ok) {
+          throw new Error(payload.error || 'Unable to fetch VX settlement.');
+        }
+
+        els.vxQuote.value = String(payload.quote);
+        appState.quoteSource = payload;
+        setQuoteStatus(`Auto-filled from Cboe daily settlement on ${payload.source_date}.`, 'good');
+      } catch (error) {
+        if (requestId !== quoteRequestId) return;
+        setQuoteStatus(error.message || 'Unable to fetch VX settlement. Enter the quote manually.', 'danger');
+      }
+
+      updateCalculator();
+    }
+
+    function refreshDerivedDefaults({ resetDate = false, refreshQuote = true } = {}) {
+      if (resetDate || !els.asOfDate.value) {
+        els.asOfDate.value = getTimeZoneIsoDate('America/New_York');
+      }
+
+      const asOfDate = parseDateInput(els.asOfDate.value);
+      const dte = Math.max(1, Math.round(num(els.dte.value, 90)));
+      els.dte.value = dte;
+
+      if (!asOfDate) {
+        appState.asOfDate = null;
+        els.asOfDateDisplay.value = '';
+        setQuoteStatus('Choose an as-of date.', 'warn');
+        updateCalculator();
+        return;
+      }
+
+      els.asOfDate.value = formatInputDate(asOfDate);
+      els.asOfDateDisplay.value = formatDisplayDate(asOfDate);
+
+      const targetDate = addDays(asOfDate, dte);
+      const contract = findMatchingContract(asOfDate, targetDate);
+      if (!contract) return;
+
+      const vxSymbol = formatVxSymbol(contract.contractYear, contract.contractMonthIndex);
+      const actualDte = diffDays(asOfDate, contract.expiration);
+
+      appState.asOfDate = asOfDate;
+      appState.targetDate = targetDate;
+      appState.optionExpirationDate = contract.expiration;
+      appState.optionMonthLabel = formatMonthYear(contract.expiration);
+      appState.actualDte = actualDte;
+      appState.quoteSource = null;
+
+      els.targetDate.value = formatCboeDate(targetDate);
+      els.optionExpirationDate.value = formatCboeDate(contract.expiration);
+      els.actualDte.value = `${actualDte} days`;
+      els.vxSymbol.value = vxSymbol;
+      if (refreshQuote) {
+        els.vxQuote.value = '';
+      }
+
+      updateCalculator();
+      if (refreshQuote) {
+        fetchSettlementQuote();
+      }
+    }
+
+    function updateCalculator() {
+      const dte = num(els.dte.value, 90);
+      const vxSymbol = els.vxSymbol.value.trim() || 'VX future';
+      const vxQuote = optionalNum(els.vxQuote.value);
+      const hasQuote = vxQuote !== null && vxQuote >= 0;
+      const multiplier = num(els.multiplier.value, 1.4);
+      const strikeIncrement = 1;
+      const premium = num(els.optionPremium.value, 0);
+      const theoretical = hasQuote ? (vxQuote * multiplier) : null;
+      const rounded = hasQuote ? roundToIncrement(theoretical, strikeIncrement) : null;
+      const distancePoints = hasQuote ? (rounded - vxQuote) : null;
+      const distancePercent = hasQuote && vxQuote > 0 ? (distancePoints / vxQuote) * 100 : null;
+      const totalCost = premium * 100;
+      const optionMonth = appState.optionMonthLabel || 'Option month';
+      const asOfLabel = appState.asOfDate ? formatDisplayDate(appState.asOfDate) : 'As-of date';
+      const targetDateLabel = appState.targetDate ? formatDisplayDate(appState.targetDate) : 'Target date';
+      const expirationLabel = appState.optionExpirationDate ? formatDisplayDate(appState.optionExpirationDate) : 'Option expiration';
+
+      els.roundedStrike.textContent = Number.isFinite(rounded) ? rounded.toFixed(rounded % 1 ? 1 : 0) : '-';
+      els.theoreticalStrike.textContent = hasQuote ? `Theoretical strike: ${theoretical.toFixed(2)}` : 'Awaiting VX quote';
+      els.monthBadge.textContent = `${optionMonth} option → ${vxSymbol}`;
+      els.distancePoints.textContent = hasQuote ? `${distancePoints.toFixed(2)} pts` : '-';
+      els.distancePercent.textContent = hasQuote ? `${distancePercent.toFixed(2)}%` : '-';
+      els.totalCost.textContent = formatMoney(totalCost);
+      els.costDetail.textContent = `${premium.toFixed(2)} points × 100`;
+
+      const setup = setupLabel(multiplier);
+      els.styleBadge.textContent = setup.text;
+      els.styleBadge.className = setup.cls;
+
+      if (hasQuote) {
+        const quoteLabel = appState.quoteSource ? `${vxQuote.toFixed(4)} settlement` : vxQuote.toFixed(2);
+        els.summaryText.innerHTML = `
+          <ul class="summary-list">
+            <li>As of <strong>${asOfLabel}</strong>, target <strong>${Math.round(dte)} DTE</strong> points to <strong>${targetDateLabel}</strong>.</li>
+            <li>Nearest standard monthly VIX expiration to that date: <strong>${expirationLabel}</strong> (<strong>${appState.actualDte ?? dte} DTE</strong>).</li>
+            <li>Matching future: <strong>${vxSymbol}</strong> at <strong>${quoteLabel}</strong>.</li>
+            <li>Strike rule: <strong>${vxQuote.toFixed(2)} × ${multiplier.toFixed(2)} = ${theoretical.toFixed(2)}</strong>.</li>
+            <li>Rounded to the nearest <strong>1-point listed strike</strong> → suggested strike <strong>${rounded.toFixed(rounded % 1 ? 1 : 0)}</strong>.</li>
+            <li>Premium assumption: <strong>${premium.toFixed(2)}</strong> points × <strong>100</strong> = <strong>${formatMoney(totalCost)}</strong> estimated cost for one VIX option.</li>
+          </ul>
+        `;
+      } else {
+        els.summaryText.innerHTML = `
+          <ul class="summary-list">
+            <li>As of <strong>${asOfLabel}</strong>, target <strong>${Math.round(dte)} DTE</strong> points to <strong>${targetDateLabel}</strong>.</li>
+            <li>Nearest standard monthly VIX expiration to that date: <strong>${expirationLabel}</strong> (<strong>${appState.actualDte ?? dte} DTE</strong>).</li>
+            <li>Matching future: <strong>${vxSymbol}</strong>.</li>
+            <li>Enter a VX quote manually or use <strong>python3 run.py</strong> so the calculator can auto-fill the latest available official Cboe settlement.</li>
+          </ul>
+        `;
+      }
+
+      els.presetChips.forEach(chip => {
+        const chipValue = num(chip.dataset.value, 0);
+        chip.classList.toggle('active', Math.abs(chipValue - multiplier) < 0.0001);
+      });
+    }
+
+    [
+      els.optionPremium
+    ].forEach(el => {
+      el.addEventListener('input', updateCalculator);
+      el.addEventListener('change', updateCalculator);
+    });
+
+    [els.customMultiplier].forEach(el => {
+      el.addEventListener('input', () => {
+        const customMultiplier = optionalNum(el.value);
+        if (customMultiplier !== null && customMultiplier > 0) {
+          els.multiplier.value = String(customMultiplier);
+          updateCalculator();
+        }
+      });
+      el.addEventListener('change', () => {
+        const customMultiplier = optionalNum(el.value);
+        if (customMultiplier !== null && customMultiplier > 0) {
+          const normalized = customMultiplier.toFixed(2);
+          els.customMultiplier.value = normalized;
+          els.multiplier.value = normalized;
+          updateCalculator();
+          return;
+        }
+        els.customMultiplier.value = Number(els.multiplier.value || 1.4).toFixed(2);
+      });
+    });
+
+    [els.asOfDate, els.dte].forEach(el => {
+      el.addEventListener('input', () => refreshDerivedDefaults());
+      el.addEventListener('change', () => refreshDerivedDefaults());
+    });
+
+    els.asOfDateDisplay.addEventListener('click', () => {
+      openAsOfDatePicker();
+    });
+
+    els.asOfDateDisplay.addEventListener('keydown', event => {
+      if (event.key !== 'Enter' && event.key !== ' ') return;
+      event.preventDefault();
+      openAsOfDatePicker();
+    });
+
+    els.vxQuote.addEventListener('input', () => {
+      if (appState.quoteSource) {
+        appState.quoteSource = null;
+        setQuoteStatus('Using manual VX quote.', 'warn');
+      }
+      updateCalculator();
+    });
+
+    els.refreshQuoteButton.addEventListener('click', () => {
+      fetchSettlementQuote();
+    });
+
+    els.presetChips.forEach(chip => {
+      chip.addEventListener('click', () => {
+        els.multiplier.value = chip.dataset.value;
+        els.customMultiplier.value = Number(chip.dataset.value).toFixed(2);
+        updateCalculator();
+      });
+    });
+
+    refreshDerivedDefaults({ resetDate: true, refreshQuote: true });
+  </script>
+</body>
+</html>
